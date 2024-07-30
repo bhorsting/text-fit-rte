@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Fit Text to Div with Varied Styles</title>
+  <style>
+    #container {
+      width: 300px;
+      height: 200px;
+      border: 1px solid black;
+      overflow: hidden;
+      position: absolute;
+      top: 10px;
+      left: 10px;
+    }
+
+    #content {
+      outline: none;
+    }
+
+    /* Example styles for inner spans */
+    .large {
+      font-size: 24px;
+      line-height: 1.4;
+    }
+
+    .small {
+      font-size: 14px;
+      line-height: 1.2;
+      letter-spacing: 10px;
+    }
+  </style>
+</head>
+<body>
+
+<div id="container">
+  <div id="content" contenteditable="true">
+    Editable Text <span class="large">Larger</span> and <span class="small">Smaller</span>
+  </div>
+</div>
+
+<script>
+  const propertiesToScale = ['fontSize', 'lineHeight', 'letter-spacing']; // Easily extendable for more properties
+
+  function adjustFontSizeToFit(container) {
+    const content = container.querySelector('#content');
+    let scalingFactor = 1; // Start with no scaling
+    const minScale = 0.1; // Minimum scaling factor
+    const maxScale = 2; // Maximum scaling factor (allows for initial upscaling)
+    let bestScale = scalingFactor;
+    const resolution = 0.01; // How finely we adjust the scale
+
+    // Function to apply scale to specified properties
+    function applyScale(scale) {
+      content.querySelectorAll('*').forEach(el => {
+        propertiesToScale.forEach(property => {
+          const dataAttribute = `data-original-${property}`;
+          if (el.hasAttribute(dataAttribute)) {
+            const originalValue = el.getAttribute(dataAttribute);
+            const parsedValue = parseFloat(originalValue);
+            // Use the original value if it's not parseable as a float
+            const valueToApply = isNaN(parsedValue) ? originalValue : `${parsedValue * scale}px`;
+            el.style[property] = valueToApply;
+          }
+        });
+      });
+    }
+
+    // Store original property values
+    content.querySelectorAll('*').forEach(el => {
+      const computedStyle = window.getComputedStyle(el);
+      propertiesToScale.forEach(property => {
+        const dataAttribute = `data-original-${property}`;
+        if (!el.hasAttribute(dataAttribute)) {
+          el.setAttribute(dataAttribute, computedStyle[property]);
+        }
+      });
+    });
+
+    // Binary search to find the best scale
+    let low = minScale, high = maxScale;
+    while (low <= high) {
+      const mid = (low + high) / 2;
+      applyScale(mid);
+      if (content.scrollWidth <= container.clientWidth && content.scrollHeight <= container.clientHeight) {
+        bestScale = mid;
+        low = mid + resolution;
+      } else {
+        high = mid - resolution;
+      }
+    }
+
+    // Apply the best scale found
+    applyScale(bestScale);
+  }
+
+  adjustFontSizeToFit(document.getElementById('container'));
+
+  document.getElementById('content').addEventListener('input', () => adjustFontSizeToFit(document.getElementById('container')));
+</script>
+</body>
+</html>
